@@ -4,6 +4,9 @@
 *.order
 *.d
 *.mod.c
+/.??*
 initramfs.cpio
 include/config/*
 vmlinux*
+Module.symvers
+System.map
