@@ -17,7 +17,6 @@ arch/arm/kernel/asm-offsets.s
 arch/arm/lib/lib.a
 include/linux/autoconf.h
 include/linux/compile.h
-initramfs_root/init.rc
 kernel/bounds.s
 lib/lib.a
 usr/initramfs_data.cpio.lzma
