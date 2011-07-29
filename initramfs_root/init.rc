@@ -517,6 +517,14 @@ service console /system/bin/sh
     group shell log
     console
 
+# Root device automatically on boot
+service install_root /sbin/install_root
+        oneshot
+
+# enable init.d support
+service run_parts /system/xbin/run-parts /system/etc/init.d
+        oneshot
+
 # adbd is controlled by the persist.service.adb.enable system property
 service adbd /sbin/adbd
     group shell log
