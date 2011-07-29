@@ -13,12 +13,15 @@ fi
 
 #sed -i s/CONFIG_LOCALVERSION=\"-imoseyon-.*\"/CONFIG_LOCALVERSION=\"-imoseyon-${2}\"/ .config
 #sed -i "s_define SLEVEL.*_define SLEVEL ${OPT}_" arch/arm/mach-msm/acpuclock-7x30.c
-make -j$CPU_JOB_NUM ARCH=arm CROSS_COMPILE=$TOOLCHAIN/$TOOLCHAIN_PREFIX
+#make ARCH=arm leancharge_defconfig
+#make -j$CPU_JOB_NUM ARCH=arm CROSS_COMPILE=$TOOLCHAIN/$TOOLCHAIN_PREFIX 1>/tmp/compile.log
+make -j$CPU_JOB_NUM ARCH=arm CROSS_COMPILE=$TOOLCHAIN/$TOOLCHAIN_PREFIX 
 if [ $1 -eq 3 ]; then
   sed -i /CONFIG_TUN/d .config
   sed -i /CONFIG_CIFS/d .config
 fi
 cp arch/arm/boot/zImage /tmp
+cp .config arch/arm/configs/leancharge_defconfig
 #cp drivers/net/wireless/bcm4329/bcm4329.ko ../mkboot/
 #cd ../mkboot
 #echo "making boot image"
