@@ -15,6 +15,7 @@ fi
 #sed -i "s_define SLEVEL.*_define SLEVEL ${OPT}_" arch/arm/mach-msm/acpuclock-7x30.c
 #make ARCH=arm leancharge_defconfig
 #make -j$CPU_JOB_NUM ARCH=arm CROSS_COMPILE=$TOOLCHAIN/$TOOLCHAIN_PREFIX 1>/tmp/compile.log
+rm usr/*.o usr/*.lzma
 make -j$CPU_JOB_NUM ARCH=arm CROSS_COMPILE=$TOOLCHAIN/$TOOLCHAIN_PREFIX 
 if [ $1 -eq 3 ]; then
   sed -i /CONFIG_TUN/d .config
