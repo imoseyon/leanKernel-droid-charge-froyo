@@ -21,10 +21,9 @@ if [ $1 -eq 3 ]; then
   sed -i /CONFIG_TUN/d .config
   sed -i /CONFIG_CIFS/d .config
 fi
-cp arch/arm/boot/zImage /tmp
+cp arch/arm/boot/zImage ../zip
 cp .config arch/arm/configs/leancharge_defconfig
-#cp drivers/net/wireless/bcm4329/bcm4329.ko ../mkboot/
-#cd ../mkboot
-#echo "making boot image"
-#./img.sh
-
+cd ../zip
+rm *.zip
+zip -r imoseyon_leanKernel_voodoo_$2.zip *
+cp *.zip /tmp
