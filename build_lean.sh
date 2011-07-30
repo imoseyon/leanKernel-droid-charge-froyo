@@ -21,9 +21,10 @@ if [ $1 -eq 3 ]; then
   sed -i /CONFIG_TUN/d .config
   sed -i /CONFIG_CIFS/d .config
 fi
-cp arch/arm/boot/zImage ../zip
+cp arch/arm/boot/zImage ../zip/kernel_update
 cp .config arch/arm/configs/leancharge_defconfig
 cd ../zip
 rm *.zip
 zip -r imoseyon_leanKernel_voodoo_$2.zip *
+rm /tmp/*.zip
 cp *.zip /tmp
