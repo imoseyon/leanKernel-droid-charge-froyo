@@ -401,6 +401,8 @@ on boot
     write /proc/sys/vm/vfs_cache_pressure  25
     write /proc/sys/vm/swappiness  30
 
+    write /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq 1000000
+
 
     # Permissions for System Server and daemons.
     chown radio system /sys/android_power/state
@@ -511,6 +513,10 @@ on boot
 # for tethering 
     chown root system /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
 # +++++++++++++++++++++++++++++++++++++++++++
+
+    chown root system /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq
+    chmod 0664 /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq
+
     class_start default
 
 ## Daemon processes to be run by init.
