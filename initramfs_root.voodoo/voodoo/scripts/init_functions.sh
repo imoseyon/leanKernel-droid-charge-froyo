@@ -10,6 +10,11 @@ get_partition_for()
 		data)		partition=$data_partition ;;
 		system)		partition=$system_partition ;;
 	esac
+
+	if test "$partition" = ""; then
+		# This device doesn't use $1 partition
+		return 1
+	fi
 }
 
 
@@ -40,7 +45,7 @@ set_fs_for()
 
 mount_()
 {
-	get_partition_for $1
+	get_partition_for $1 || return 1
 	get_fs_for $1
 
 	if test "$fs" = "ext4"; then
@@ -51,7 +56,13 @@ mount_()
 			# MoviNAND hardware support barrier, it allows to activate
 			# the journal option data=ordered and stay free from corruption
 			# even in worst cases
-			data)	ext4_data_options=',data=ordered,barrier=1' ;;
+			data)
+				if test "$data_on_emmc" = 1; then
+					ext4_data_options=',data=ordered,barrier=1'
+				else
+					ext4_data_options=',nodelalloc,data=ordered,barrier=0'
+				fi
+			;;
 			# dbdata device don't support barrier. Delayed allocations
 			# are unsafe and must be deactivated
 			dbdata)	ext4_data_options=',data=ordered,nodelalloc' ;;
@@ -174,22 +185,48 @@ detect_supported_model_and_setup_partitions()
 		
 		# fascinate/mesmerize/showcase are different here
 		if test "$model" = 'fascinate' || test "$model" = 'mesmerize-showcase' || test "$model" = 'continuum'; then
-			data_partition='/dev/block/mmcblk0p1'
 			sdcard_device='/dev/block/mmcblk1p1'
+			data_partition='/dev/block/mmcblk0p1'
+			dbdata_partition='/dev/block/stl10'
 			cache_partition='/dev/block/stl11'
+			system_partition='/dev/block/stl9'
 		# vzw galaxytab is different here
 		elif test "$model" = 'galaxytab-vzw'; then
+			sdcard_device='/dev/block/mmcblk1p1'
 			data_partition='/dev/block/mmcblk0p2'
-			sdcard_device='/dev/block/mmcblk1p1'
+			dbdata_partition='/dev/block/stl10'
 			cache_partition='/dev/block/mmcblk0p1'
-		else
-		# for every other model like droid charge baby
-			data_partition='/dev/block/mmcblk0p1'
+			system_partition='/dev/block/stl9'
+		# /data on OneNAND for GalaxyS4G is different here
+		# and also no dbdata
+		elif test "$model" = 'tmo-vibrant-galaxys4g'; then
+			data_on_emmc=0
+			sdcard_device='/dev/block/mmcblk0p1'
+			data_partition='/dev/block/stl10'
+			dbdata_partition=''
+			cache_partition='/dev/block/stl11'
+			system_partition='/dev/block/stl9'
+		# All partitions are different on the DROID Charge
+		# compared to all other SGS devices.
+		# (ie. Samsung Stealth, SCH-I510)
+		elif test "$model" = 'charge'; then
 			sdcard_device='/dev/block/mmcblk1p1'
-                        cache_partition='/dev/block/stl10'
+			data_partition='/dev/block/mmcblk0p1'
+			dbdata_partition='/dev/block/stl11'
+			cache_partition='/dev/block/mmcblk0p3'
+			system_partition='/dev/block/stl10'
+		else
+		# for every other model
+			sdcard_device='/dev/block/mmcblk0p1'
+			data_partition='/dev/block/mmcblk0p2'
+			dbdata_partition='/dev/block/stl10'
+			cache_partition='/dev/block/stl11'
+			system_partition='/dev/block/stl9'
 		fi
 		echo "data_partition='$data_partition'" >> /voodoo/configs/partitions
+		echo "dbdata_partition='$dbdata_partition'" >> /voodoo/configs/partitions
 		echo "cache_partition='$cache_partition'" >> /voodoo/configs/partitions
+		echo "system_partition='$system_partition'" >> /voodoo/configs/partitions
 	else
 		return 1
 	fi
@@ -199,7 +236,7 @@ detect_supported_model_and_setup_partitions()
 detect_fs_on()
 {
 	resource=$1
-	get_partition_for $resource
+	get_partition_for $resource || return 1
 	log "filesystem detection on $resource:"
 	if tune2fs -l $partition 1>&2; then
 		# we found an ext2/3/4 partition. but is it real ?
@@ -377,7 +414,7 @@ check_available_space()
 	if test $dest_fs = ext4; then
 		log "check Ext4 additionnal disk usage for $resource" 1
 		case $resource in
-			system)	overhead=2 ;;
+			system)	overhead=1 ;;
 			data)	overhead=40 ;;
 			dbdata)	overhead=20 ;;
 			cache)	overhead=0 ;; # cache? don't care
@@ -439,16 +476,17 @@ rfs_format()
 
 ext4_format()
 {
-	common_mkfs_ext4_options='^resize_inode,^ext_attr,^huge_file'
+	common_mkfs_ext4_options='^extent,^flex_bg,^uninit_bg,^has_journal'
 	case $resource in
-		system)	mkfs_options="-O $common_mkfs_ext4_options,^has_journal"  ;;
-		cache)	mkfs_options="-O $common_mkfs_ext4_options -J size=4"  ;;
-		data)	mkfs_options="-O $common_mkfs_ext4_options -J size=32" ;;
-		dbdata)	mkfs_options="-O $common_mkfs_ext4_options -J size=16" ;;
+		# tune system inode number to fit available space in RFS and Ext4
+		system) mkfs_options="-O $common_mkfs_ext4_options,^large_file -L SYSTEM -b 4096 -m 0 -F"  ;;
+		cache)  mkfs_options="-O $common_mkfs_ext4_options -L CACHE -b 4096 -m 0 -F"  ;;
+		data)   mkfs_options="-O $common_mkfs_ext4_options -L DATA -b 4096 -m 0 -F" ;;
+		dbdata) mkfs_options="-O $common_mkfs_ext4_options,^large_file -L DATADATA -b 4096 -m 0 -F" ;;
 	esac
 	mkfs.ext4 -F $mkfs_options -T default $partition
 	# force check the filesystem after 100 mounts or 100 days
-	tune2fs -c 100 -i 100d -m 0 $partition
+	tune2fs -c 100 -i 100d -m 0 -L $resource $partition
 }
 
 
@@ -524,7 +562,7 @@ convert()
 	test tell_conversion_happened = '' && tell_conversion_happened=0
 	
 	# use global getters
-	get_partition_for $resource
+	get_partition_for $resource || return 1
 	get_fs_for $resource
 
 	source_fs=$fs
@@ -541,7 +579,7 @@ convert()
 	fi
 
 	# read the battery level
-	if test "$model" = 'fascinate' || test "$model" = 'mesmerize-showcase' || test "$model" = 'continuum'; then
+	if test "$model" = 'fascinate' || test "$model" = 'mesmerize-showcase' || test "$model" = 'continuum' || test "$model" = 'charge'; then
 		battery_level=`cat /sys/devices/platform/sec-battery/power_supply/battery/capacity`
 	elif test "$model" = 'galaxytab-vzw'; then
 		battery_level=`cat /sys/devices/platform/p1-battery/power_supply/battery/capacity`
@@ -741,11 +779,17 @@ finalize_interrupted_rfs_conversion()
 		archive=/sdcard/voodoo_"$resource"_conversion.tar.lzo
 		archive_ignored=/sdcard/voodoo_"$resource"_conversion_ignored.tar.lzo
 
-		# check if the /system archive is there and is more than 20MB
+		# check if an archive is there and is more than min_size
 		if test -f $archive; then
 
-			# /system is already mounted but not other resources
-			test $resource != system && mount_ $resource
+			# make sure /system is always unmounted
+			umount /system 2>/dev/null
+
+			# make sure the partition contains a valid filesystem or
+			# format to RFS in case of problem with Ext4 modules
+			if ! mount_ $resource; then
+				rfs_format $resource
+			fi
 
 			# check if the resource partition is empty (or at contains less than $min_size of data)
 			if test `du -s /$resource | cut -d/ -f1` -lt $min_size; then
@@ -847,7 +891,7 @@ get_cwm_fstab_mount_option_for()
 generate_cwm_fstab()
 {
 	for x in cache datadata data system; do
-		get_partition_for $x
+		get_partition_for $x || continue
 		get_fs_for $x
 		get_cwm_fstab_mount_option_for $fs
 		echo "$partition /$x $fs $cwm_mount_options" >> /voodoo/run/cwm.fstab
