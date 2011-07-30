@@ -7030,7 +7030,7 @@ cpumask_var_t nohz_cpu_mask;
  */
 static void update_sysctl(void)
 {
-	unsigned int cpus = min(num_online_cpus(), 8U);
+	unsigned int cpus = min(num_online_cpus(), 8);
 	unsigned int factor = 1 + ilog2(cpus);
 
 #define SET_SYSCTL(name) \
@@ -10985,5 +10985,7 @@ void synchronize_sched_expedited(void)
 		synchronize_sched();
 }
 EXPORT_SYMBOL_GPL(synchronize_sched_expedited);
+
+EXPORT_SYMBOL_GPL(nr_running); // smartass needs this
 
 #endif /* #else #ifndef CONFIG_SMP */
