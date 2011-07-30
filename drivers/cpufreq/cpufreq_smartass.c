@@ -247,8 +247,8 @@ static void cpufreq_smartass_timer(unsigned long data)
                 if (policy->cur == policy->max)
                         return;
 
-                if (nr_running() < 1)
-                        return;
+//                if (nr_running() < 1)
+ //                       return;
 
 		new_rate = up_rate_us;
 
@@ -268,7 +268,7 @@ static void cpufreq_smartass_timer(unsigned long data)
          * firing. So setup another timer to fire to check cpu utlization.
          * Do not setup the timer if there is no scheduled work or if at max speed.
          */
-        if (policy->cur < this_smartass->max_speed && !timer_pending(&this_smartass->timer) && nr_running() > 0)
+        if (policy->cur < this_smartass->max_speed && !timer_pending(&this_smartass->timer) > 0)
                 reset_timer(data,this_smartass);
 
         if (policy->cur == policy->min)
@@ -319,7 +319,7 @@ static void cpufreq_smartass_freq_change_time_work(struct work_struct *work)
                 this_smartass = &per_cpu(smartass_info, cpu);
                 policy = this_smartass->cur_policy;
                 cpu_load = this_smartass->cur_cpu_load;
-                force_ramp_up = this_smartass->force_ramp_up && nr_running() > 1;
+                force_ramp_up = this_smartass->force_ramp_up;
                 this_smartass->force_ramp_up = 0;
 
                 if (force_ramp_up || cpu_load > max_cpu_load) {
@@ -347,9 +347,10 @@ static void cpufreq_smartass_freq_change_time_work(struct work_struct *work)
 		  }
 		
                 } else if (cpu_load < min_cpu_load) {
-			if (cpu_load < rapid_min_cpu_load) {
-				new_freq = awake_min_freq;
-			} else if (ramp_down_step) {
+//			if (cpu_load < rapid_min_cpu_load) {
+//				new_freq = awake_min_freq;
+//			} else if (ramp_down_step) {
+			if (ramp_down_step) {
                                   new_freq = policy->cur - ramp_down_step;
                         } else {
                                 cpu_load += 100 - max_cpu_load; // dummy load.
