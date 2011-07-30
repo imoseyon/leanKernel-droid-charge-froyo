@@ -128,7 +128,8 @@ static unsigned int sample_rate_jiffies;
  * Minimum Freqeuncy delta when ramping up.
  * zero disables and causes to always jump straight to max frequency.
  */
-#define DEFAULT_RAMP_UP_STEP 400000
+//#define DEFAULT_RAMP_UP_STEP 400000
+#define DEFAULT_RAMP_UP_STEP 0
 static unsigned int ramp_up_step;
 
 /*
@@ -324,11 +325,14 @@ static void cpufreq_smartass_freq_change_time_work(struct work_struct *work)
 
                 if (force_ramp_up || cpu_load > max_cpu_load) {
 		  if (!suspended) {
+/*
 			if (force_ramp_up && up_min_freq && policy->cur < up_min_freq) {
 			  	// imoseyon - ramp up faster
                                 new_freq = up_min_freq;
                                 relation = CPUFREQ_RELATION_L;
 			} else if (ramp_up_step) {
+*/
+			if (ramp_up_step) {
                                 new_freq = policy->cur + ramp_up_step;
                                 relation = CPUFREQ_RELATION_H;
                         } else {
