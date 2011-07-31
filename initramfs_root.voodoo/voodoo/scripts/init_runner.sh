@@ -1,5 +1,19 @@
 #!/bin/sh
 # logger / runner for Voodoo init script
+
+# imoseyon - remove voodoo stuff if disabled
+if test -f "/imoseyon.novoodoo" || test -f "/data/imoseyon.novoodoo"
+then
+	rm -f /sbin/adbd
+	rm -f /lib/*.so
+	rm -rf /usr
+	mv -f /sbin/adbd.orig /sbin/adbd
+	rm -rf /voodoo
+	rm -rf /bin
+	exec /init_samsung
+	exit
+fi
+
 exec > /voodoo/logs/init_runner_log.txt 2>&1
 
 echo "Hello Voodoo:\n"
