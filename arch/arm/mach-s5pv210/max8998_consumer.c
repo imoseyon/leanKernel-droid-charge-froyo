@@ -89,21 +89,12 @@ static const unsigned int frequency_match_1GHZ[][4] = {
         {1400000, 1375, 1125, 0}, //WARNING: out of spec voltage
         {1300000, 1325, 1125, 1}, //WARNING: out of spec voltage
         {1200000, 1300, 1125, 2},
-        {1120000, 1300, 1125, 3},
         {1000000, 1275, 1125, 4},
         {800000, 1200, 1125, 5},
         {600000, 1175, 1125, 6},
         {400000, 1050, 1125, 7},
         {200000, 950, 1000, 8},
         {100000, 950, 1000, 9},
-
-/*
-        {1000000, 1250, 1100, 0},
-        {800000, 1175, 1100, 1},
-        {400000, 1000, 1100, 2},
-        {200000, 900, 1100, 4},
-        {100000, 900, 1000, 5},
-*/
 #else //just for dvs test
         {1000000, 1250, 1100, 0},
         {800000, 1250, 1100, 1},
@@ -115,10 +106,9 @@ static const unsigned int frequency_match_1GHZ[][4] = {
 
 unsigned int frequency_voltage_tab[][3] = {
 /* frequency, Mathced VDD ARM voltage , Matched VDD INT*/
-        {1400000, 1375, 1125}, //WARNING: out of spec voltage for VDD_ARM
-        {1300000, 1325, 1125}, //WARNING: out of spec voltage for VDD_ARM
+        {1400000, 1375, 1125}, 
+        {1300000, 1325, 1125}, 
         {1200000, 1300, 1125},
-        {1120000, 1300, 1125},
         {1000000, 1275, 1125},
         {800000, 1200, 1125},
         {600000, 1175, 1125},
@@ -190,13 +180,12 @@ static const unsigned int dvs_volt_table_1GHZ[][3] = {
        {L0, DVSARM1, DVSINT1}, //1400
        {L1, DVSARM1, DVSINT1}, //1300
        {L2, DVSARM1, DVSINT1}, //1200
-       {L3, DVSARM1, DVSINT1}, //1120
-       {L4, DVSARM1, DVSINT1}, //1000
-       {L5, DVSARM2, DVSINT1}, //800
-       {L6, DVSARM3, DVSINT1}, //600
-       {L7, DVSARM3, DVSINT1}, //400
-       {L8, DVSARM4, DVSINT2}, //200
-       {L9, DVSARM4, DVSINT2}, //100
+       {L3, DVSARM1, DVSINT1}, //1000
+       {L4, DVSARM2, DVSINT1}, //800
+       {L5, DVSARM3, DVSINT1}, //600
+       {L6, DVSARM3, DVSINT1}, //400
+       {L7, DVSARM4, DVSINT2}, //200
+       {L8, DVSARM4, DVSINT2}, //100
 };
 
 
@@ -206,11 +195,11 @@ const unsigned int (*dvs_volt_table[2])[3] = {
 };
 
 static const unsigned int dvs_arm_voltage_set[][2] = {
-	{DVSARM1, 1375},
-	{DVSARM2, 1200},
+	{DVSARM1, 1375}, //1.4ghz
+	{DVSARM2, 1200}, //800mhz
 	{DVSARM3, 1100},
 	{DVSARM4, 950},
-	{DVSINT1, 1125},
+	{DVSINT1, 1100},
 	{DVSINT2, 1000},
 };
 #endif
@@ -410,18 +399,17 @@ static int set_max8998(unsigned int pwr, enum perf_level p_lv)
                 case L1:
                 case L2:
                 case L3:
-                case L4:
                     max8998_set_dvsarm_direct(DVSARM1, voltage);
                     break;
+                case L4:
                 case L5:
-                case L6:
                     max8998_set_dvsarm_direct(DVSARM2, voltage);
                     break;
-                case L7:
+                case L6:
                     max8998_set_dvsarm_direct(DVSARM3, voltage);
                     break;
+                case L7:
                 case L8:
-                case L9:
                     max8998_set_dvsarm_direct(DVSARM4, voltage);
                     break;
                }
@@ -700,7 +688,7 @@ void max8998_init(void)
 	else // for 1GHZ table
 	{
 		step_curr = L0;
-		set_voltage_dvs(L1); //switch to 800MHZ
+		set_voltage_dvs(L2); //switch to 800MHZ
 	}
 	if (!dvs_initilized) dvs_initilized=1;
 }
