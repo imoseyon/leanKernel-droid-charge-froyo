@@ -19,10 +19,10 @@ rm usr/*.o usr/*.lzma
 
 # non-voodoo kernel
 if [ $OPT -eq 2 ]; then
-  touch initramfs.voodoo/imoseyon.novoodoo
+  touch initramfs_root.voodoo/imoseyon.novoodoo
 else 
   # just in case
-  rm -f initramfs.voodoo/imoseyon.novoodoo
+  rm -f initramfs_root.voodoo/imoseyon.novoodoo
 fi
 
 make -j$CPU_JOB_NUM ARCH=arm CROSS_COMPILE=$TOOLCHAIN/$TOOLCHAIN_PREFIX 
@@ -31,7 +31,7 @@ if [ $OPT -eq 3 ]; then
   sed -i /CONFIG_CIFS/d .config
 fi
 if [ $OPT -eq 2 ]; then
-  rm -f initramfs.voodoo/imoseyon.novoodoo
+  rm -f initramfs._root.voodoo/imoseyon.novoodoo
 fi
 cp arch/arm/boot/zImage ../zip/kernel_update
 cp .config arch/arm/configs/leancharge_defconfig
