@@ -33,7 +33,7 @@
 						"cpufreq-core", msg)
 
 unsigned int exp_UV_mV[9] = {0,0,0,0,0,0,0,0,0}; //default undervolts {1400,1300,1200,1000,800,600,400,200,100}
-int active_states[9] = {0,0,0,1,1,1,1,1,1}; //default enabled states {1400,1300,1200,1000,800,600,400,200,100}
+int active_states[9] = {0,0,0,1,1,0,1,1,1}; //default enabled states {1400,1300,1200,1000,800,600,400,200,100}
 int exp_update_states=1;
 
 extern unsigned int frequency_voltage_tab[][3];
