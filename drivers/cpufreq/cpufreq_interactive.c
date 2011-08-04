@@ -60,7 +60,7 @@ static unsigned int samples = 0;
  * The minimum ammount of time to spend at a frequency before we can ramp down,
  * default is 50ms.
  */
-#define DEFAULT_MIN_SAMPLE_TIME 50000;
+#define DEFAULT_MIN_SAMPLE_TIME 44000;
 static unsigned long min_sample_time;
 
 static unsigned int freq_threshold = 1800000;

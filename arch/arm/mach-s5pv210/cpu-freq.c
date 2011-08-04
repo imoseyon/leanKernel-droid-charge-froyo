@@ -37,12 +37,12 @@
 
 #define ENABLE_DVFS_LOCK_HIGH 1
 #define USE_DVS
-#define GPIO_BASED_DVS
+//#define GPIO_BASED_DVS // use non-gpio based for voltage scaling
 
 #define DBG(fmt...)
 //#define DBG(fmt...) printk(fmt)
 
-extern int active_states[10];
+extern int active_states[9];
 
 unsigned int dvfs_change_direction;
 #define CLIP_LEVEL(a, b) (a > b ? b : a)
@@ -168,7 +168,8 @@ static unsigned int  (*s5pc110_thres_table[2])[2] = {
 static int get_dvfs_perf_level(enum freq_level_states freq_level, unsigned int *perf_level)
 {
 	unsigned int freq=0, index = 0;
-	struct cpufreq_frequency_table *freq_tab = s5pc110_freq_table[S5PC11X_FREQ_TAB];
+	struct cpufreq_frequency_table *freq_tab = s5pc110_freq_table_1GHZ;
+//	struct cpufreq_frequency_table *freq_tab = s5pc110_freq_table[S5PC11X_FREQ_TAB];
 	switch(freq_level)
 	{
         case LEV_1400MHZ:
@@ -329,7 +330,8 @@ EXPORT_SYMBOL(s5pc110_unlock_dvfs_high_level);
 unsigned int s5pc11x_target_freq_find_index(unsigned int index_find,int flag)
 {
         unsigned int index = index_find;
-        struct cpufreq_frequency_table *freq_tab = s5pc110_freq_table[S5PC11X_FREQ_TAB];
+//        struct cpufreq_frequency_table *freq_tab = s5pc110_freq_table[S5PC11X_FREQ_TAB];
+        struct cpufreq_frequency_table *freq_tab = s5pc110_freq_table_1GHZ;
 
                 if(flag == 1)
                         while(true){
@@ -355,7 +357,8 @@ unsigned int s5pc11x_target_frq(unsigned int pred_freq,
         //unsigned long irqflags;
         unsigned int freq;
 
-        struct cpufreq_frequency_table *freq_tab = s5pc110_freq_table[S5PC11X_FREQ_TAB];
+//        struct cpufreq_frequency_table *freq_tab = s5pc110_freq_table[S5PC11X_FREQ_TAB];
+        struct cpufreq_frequency_table *freq_tab = s5pc110_freq_table_1GHZ;
 
         spin_lock(&g_dvfslock);
         if(freq_tab[0].frequency < pred_freq) {
@@ -413,7 +416,8 @@ int s5pc11x_target_freq_index(unsigned int freq)
 	int index = 0;
 	//unsigned long irqflags;
 	
-	struct cpufreq_frequency_table *freq_tab = s5pc110_freq_table[S5PC11X_FREQ_TAB];
+//	struct cpufreq_frequency_table *freq_tab = s5pc110_freq_table[S5PC11X_FREQ_TAB];
+	struct cpufreq_frequency_table *freq_tab = s5pc110_freq_table_1GHZ;
 
 	if(freq >= freq_tab[index].frequency) {
 		goto s5pc11x_target_freq_index_end;
@@ -804,9 +808,9 @@ static int __init s5pc110_cpu_init(struct cpufreq_policy *policy)
 		g_dvfs_high_lock_limit = 5;
 #else
 		S5PC11X_FREQ_TAB = 0;
-		S5PC11X_MAXFREQLEVEL = 9;
-		MAXFREQ_LEVEL_SUPPORTED = 10;
-		g_dvfs_high_lock_limit = 12;
+		S5PC11X_MAXFREQLEVEL = 8;
+		MAXFREQ_LEVEL_SUPPORTED = 9;
+		g_dvfs_high_lock_limit = 8;
 #endif
 	
 	printk("S5PC11X_FREQ_TAB=%d , S5PC11X_MAXFREQLEVEL=%d\n",S5PC11X_FREQ_TAB,S5PC11X_MAXFREQLEVEL);

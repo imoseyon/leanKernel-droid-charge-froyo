@@ -56,7 +56,7 @@
 #endif
 
 #ifndef CONFIG_CPU_FREQ
-unsigned int S5PC11X_FREQ_TAB = 1;
+unsigned int S5PC11X_FREQ_TAB = 0; // 1 = 800mhz, 0 = 1000mhz?
 #endif
 
 #define RAMP_RATE 10 // 10mv/usec
@@ -86,15 +86,15 @@ enum PMIC_VOLTAGE {
 static const unsigned int frequency_match_1GHZ[][4] = {
 /* frequency, Mathced VDD ARM voltage , Matched VDD INT*/
 #if 1
-        {1400000, 1375, 1125, 0}, //WARNING: out of spec voltage
-        {1300000, 1325, 1125, 1}, //WARNING: out of spec voltage
-        {1200000, 1300, 1125, 2},
-        {1000000, 1275, 1125, 4},
-        {800000, 1200, 1125, 5},
-        {600000, 1175, 1125, 6},
-        {400000, 1050, 1125, 7},
-        {200000, 950, 1000, 8},
-        {100000, 950, 1000, 9},
+        {1400000, 1375, 1100, 0}, 
+        {1300000, 1325, 1100, 1}, 
+        {1200000, 1300, 1100, 2},
+        {1000000, 1275, 1100, 3},
+        {800000, 1200, 1100, 4},
+        {600000, 1175, 1100, 5},
+        {400000, 1050, 1100, 6},
+        {200000, 950, 1000, 7},
+        {100000, 950, 1000, 8},
 #else //just for dvs test
         {1000000, 1250, 1100, 0},
         {800000, 1250, 1100, 1},
@@ -106,15 +106,15 @@ static const unsigned int frequency_match_1GHZ[][4] = {
 
 unsigned int frequency_voltage_tab[][3] = {
 /* frequency, Mathced VDD ARM voltage , Matched VDD INT*/
-        {1400000, 1375, 1125}, 
-        {1300000, 1325, 1125}, 
-        {1200000, 1300, 1125},
-        {1000000, 1275, 1125},
-        {800000, 1200, 1125},
-        {600000, 1175, 1125},
-        {400000, 1050, 1125},
-        {200000, 950, 1000},
-        {100000, 950, 1000},
+        {1400000, 1375, 1375}, 
+        {1300000, 1325, 1325}, 
+        {1200000, 1300, 1300},
+        {1000000, 1275, 1275},
+        {800000, 1200, 1200},
+        {600000, 1175, 1175},
+        {400000, 1050, 1050},
+        {200000, 950, 950},
+        {100000, 950, 950},
 };
 
 static const unsigned int frequency_match_800MHZ[][4] = {
@@ -169,11 +169,8 @@ static unsigned int s_arm_voltage=0, s_int_voltage=0;
 static const unsigned int dvs_volt_table_800MHZ[][3] = {
         {L0, DVSARM2, DVSINT1},
         {L1, DVSARM3, DVSINT1},
- //266       {L2, DVSARM3, DVSINT1},
         {L2, DVSARM4, DVSINT1},
         {L3, DVSARM4, DVSINT2},
-//        {L4, DVSARM4, DVSINT2},
-//        {L5, DVSARM4, DVSINT2},
 };
 
 static const unsigned int dvs_volt_table_1GHZ[][3] = {
@@ -182,7 +179,7 @@ static const unsigned int dvs_volt_table_1GHZ[][3] = {
        {L2, DVSARM1, DVSINT1}, //1200
        {L3, DVSARM1, DVSINT1}, //1000
        {L4, DVSARM2, DVSINT1}, //800
-       {L5, DVSARM3, DVSINT1}, //600
+       {L5, DVSARM2, DVSINT1}, //600
        {L6, DVSARM3, DVSINT1}, //400
        {L7, DVSARM4, DVSINT2}, //200
        {L8, DVSARM4, DVSINT2}, //100
@@ -197,14 +194,14 @@ const unsigned int (*dvs_volt_table[2])[3] = {
 static const unsigned int dvs_arm_voltage_set[][2] = {
 	{DVSARM1, 1375}, //1.4ghz
 	{DVSARM2, 1200}, //800mhz
-	{DVSARM3, 1100},
+	{DVSARM3, 1050},
 	{DVSARM4, 950},
 	{DVSINT1, 1100},
 	{DVSINT2, 1000},
 };
 #endif
 
-extern unsigned int exp_UV_mV[10];
+extern unsigned int exp_UV_mV[9];
 
 //Controller Control Register (ConControl, R/W, Address = 0xF000_0000, 0xF140_0000)
 u32 readControllerControlRegister0(int param){
@@ -375,7 +372,8 @@ static int set_max8998(unsigned int pwr, enum perf_level p_lv)
 	int voltage;
 	int pmic_val;
 	int ret = 0;
-	const unsigned int (*frequency_match_tab)[4] = frequency_match[S5PC11X_FREQ_TAB];	
+	const unsigned int (*frequency_match_tab)[4] = frequency_match_1GHZ;	
+//	const unsigned int (*frequency_match_tab)[4] = frequency_match[S5PC11X_FREQ_TAB];	
 
 	writeMemoryData(0);
         readMemoryData(0);
@@ -383,7 +381,10 @@ static int set_max8998(unsigned int pwr, enum perf_level p_lv)
         if(pwr == PMIC_ARM) {
              // voltage = frequency_match_tab[p_lv][pwr + 1];
 
-                voltage = frequency_match_tab[p_lv][pwr + 1] - (exp_UV_mV[p_lv]);
+		if (p_lv < L7)  // don't allow voltage to be changed for 100/200 for now
+                  voltage = frequency_match_tab[p_lv][pwr + 1] - (exp_UV_mV[p_lv]);
+		else
+		  voltage = frequency_match_tab[p_lv][pwr + 1];
 
                 if(frequency_voltage_tab[p_lv][2] != voltage)
                         frequency_voltage_tab[p_lv][2] = voltage;
@@ -418,7 +419,7 @@ static int set_max8998(unsigned int pwr, enum perf_level p_lv)
                pmic_val = voltage * 1000;
 
 //             DBG("regulator_set_voltage =%d\n",voltage);
-               // printk(KERN_NOTICE "regulator_set_voltage =%dmA @ %dMHz-%d UV=%d\n",voltage,frequency_match_tab[p_lv][pwr]/1000,p_lv,exp_UV_mV[p_lv]);
+//               printk(KERN_DEBUG "[imosey] regulator_set_voltage =%dmA @ %dMHz-%d UV=%d\n",voltage,frequency_match_tab[p_lv][pwr]/1000,p_lv,exp_UV_mV[p_lv]);
 //             DBG("regulator_set_voltage =%dmA @ %dMHz-%d UV=%d\n",voltage,frequency_match_tab[p_lv][pwr]/1000,p_lv,exp_UV_mV[p_lv]);
                /*set Arm voltage*/
                ret = regulator_set_voltage(Reg_Arm,pmic_val,pmic_val);
@@ -508,7 +509,8 @@ EXPORT_SYMBOL(set_voltage);
 #ifdef DECREASE_DVFS_DELAY
 int set_gpio_dvs(enum perf_level p_lv)
 {
-        const unsigned int (*frequency_match_tab)[4] = frequency_match[S5PC11X_FREQ_TAB];
+        const unsigned int (*frequency_match_tab)[4] = frequency_match_1GHZ;
+//        const unsigned int (*frequency_match_tab)[4] = frequency_match[S5PC11X_FREQ_TAB];
 
         switch(p_lv)
     {
@@ -640,16 +642,22 @@ int set_voltage_dvs(enum perf_level p_lv)
 	return 0;
 #else
 	unsigned int new_voltage, old_voltage; 
-	const unsigned int (*dvs_volt_table_ptr)[3] = dvs_volt_table[S5PC11X_FREQ_TAB];
+	const unsigned int (*frequency_match_tab)[4] = frequency_match_1GHZ;
+	const unsigned int (*dvs_volt_table_ptr)[3] = dvs_volt_table_1GHZ;
+//	const unsigned int (*dvs_volt_table_ptr)[3] = dvs_volt_table[S5PC11X_FREQ_TAB];
 
 	DBG("%s : p_lv = %d\n", __FUNCTION__, p_lv);
 	if((step_curr == p_lv) && dvs_initilized)
 		return 0;
 
 	/*For arm vdd*/
-	new_voltage = dvs_arm_voltage_set[dvs_volt_table_ptr[p_lv][1]-DVSARM1][1];
-	old_voltage = dvs_arm_voltage_set[dvs_volt_table_ptr[step_curr][1]-DVSARM1][1];
-	DBG("%s ARM VDD: new voltage = %u old voltage = %u\n",__func__,new_voltage,old_voltage);
+//	new_voltage = dvs_arm_voltage_set[dvs_volt_table_ptr[p_lv][1]-DVSARM1][1];
+//	old_voltage = dvs_arm_voltage_set[dvs_volt_table_ptr[step_curr][1]-DVSARM1][1];
+	new_voltage = frequency_match_1GHZ[p_lv][1] - exp_UV_mV[p_lv];
+	old_voltage = frequency_match_1GHZ[step_curr][1];
+//	DBG("%s ARM VDD: new voltage = %u old voltage = %u\n",__func__,new_voltage,old_voltage);
+//	pr_info("[imosey] %s ARM VDD: new voltage = %u old voltage = %u\n",__func__,new_voltage,old_voltage);
+//	printk(KERN_DEBUG "[imosey] regulator_set_voltage =%dmA @ %dMHz-%d UV=%d\n",new_voltage,frequency_match_tab[p_lv][1]/1000,p_lv,exp_UV_mV[p_lv]);
 	if(new_voltage != old_voltage){
 		set_gpio_dvs(dvs_volt_table_ptr[p_lv][1]);
 		if(new_voltage > old_voltage)
@@ -660,7 +668,8 @@ int set_voltage_dvs(enum perf_level p_lv)
 	/*For arm int*/
 	new_voltage = dvs_arm_voltage_set[dvs_volt_table_ptr[p_lv][2]-DVSARM1][1];
 	old_voltage = dvs_arm_voltage_set[dvs_volt_table_ptr[step_curr][2]-DVSARM1][1];
-	DBG("%s ARM INT: new voltage = %u old voltage = %u\n",__func__,new_voltage,old_voltage);
+//	DBG("%s ARM INT: new voltage = %u old voltage = %u\n",__func__,new_voltage,old_voltage);
+//	pr_info("[imosey] %s ARM INT: new voltage = %u old voltage = %u\n",__func__,new_voltage,old_voltage);
 	if(new_voltage != old_voltage){
 		set_gpio_dvs(dvs_volt_table_ptr[p_lv][2]);
 		if(new_voltage > old_voltage)
@@ -683,12 +692,12 @@ void max8998_init(void)
 	if(S5PC11X_FREQ_TAB) // for 1.2GHZ table
 	{
 		step_curr = L0;
-		set_voltage_dvs(L2); //switch to 800MHZ
+		set_voltage_dvs(L3); //switch to 800MHZ
 	}
 	else // for 1GHZ table
 	{
 		step_curr = L0;
-		set_voltage_dvs(L2); //switch to 800MHZ
+		set_voltage_dvs(L3); //switch to 800MHZ
 	}
 	if (!dvs_initilized) dvs_initilized=1;
 }
