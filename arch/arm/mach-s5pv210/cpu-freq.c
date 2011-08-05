@@ -47,9 +47,9 @@ extern int active_states[9];
 unsigned int dvfs_change_direction;
 #define CLIP_LEVEL(a, b) (a > b ? b : a)
 
-unsigned int MAXFREQ_LEVEL_SUPPORTED = 4;
-unsigned int S5PC11X_MAXFREQLEVEL = 4;
-unsigned int S5PC11X_FREQ_TAB;
+unsigned int MAXFREQ_LEVEL_SUPPORTED = 9;
+unsigned int S5PC11X_MAXFREQLEVEL = 8;
+unsigned int S5PC11X_FREQ_TAB = 0;
 static spinlock_t g_dvfslock = SPIN_LOCK_UNLOCKED;
 static unsigned int s5pc11x_cpufreq_level = 3;
 unsigned int s5pc11x_cpufreq_index = 6;
@@ -95,11 +95,11 @@ static struct cpufreq_frequency_table s5pc110_freq_table_1GHZ[] = {
 
 /*Assigning different index for fast scaling up*/
 static unsigned char transition_state_1GHZ[][2] = {
-	{1, 5},//1400
-        {2, 5},//1300
-        {3, 5},//1200
-        {4, 5},//1000
-        {5, 5},//800
+	{1, 0},//1400
+        {2, 0},//1300
+        {3, 1},//1200
+        {4, 2},//1000
+        {5, 3},//800
         {6, 5},//600
         {7, 6},//400
         {8, 7},//200
@@ -130,7 +130,7 @@ static unsigned char transition_state_1d2GHZ[][2] = {
 
 static unsigned char (*transition_state[2])[2] = {
         transition_state_1GHZ,
-        transition_state_1d2GHZ,
+        transition_state_1GHZ,
 };
 
 static struct cpufreq_frequency_table *s5pc110_freq_table[] = {
@@ -250,6 +250,7 @@ void update_transition_states()
         printk("update_transition_state...\n");
         for(i=0;i<S5PC11X_MAXFREQLEVEL+1;i++) {
                 printk("%d, %d\n",transition_state[S5PC11X_FREQ_TAB][i][0],transition_state[S5PC11X_FREQ_TAB][i][1]);
+		printk("active_state %d: %d\n", i, active_states[i]);
         }
 }
 
@@ -353,15 +354,25 @@ break;
 unsigned int s5pc11x_target_frq(unsigned int pred_freq,
                                 int flag)
 {
-        int index;
-        //unsigned long irqflags;
+        int index, i;
         unsigned int freq;
 
 //        struct cpufreq_frequency_table *freq_tab = s5pc110_freq_table[S5PC11X_FREQ_TAB];
         struct cpufreq_frequency_table *freq_tab = s5pc110_freq_table_1GHZ;
 
+	// imoseyon stuff
+	if (flag == 2) {
+	  for (i=0;i<MAXFREQ_LEVEL_SUPPORTED;i++) {
+		if (freq_tab[i].frequency == pred_freq) { 
+		  s5pc11x_cpufreq_index = i; 
+		  break;
+		}
+	  }
+	}
+
         spin_lock(&g_dvfslock);
         if(freq_tab[0].frequency < pred_freq) {
+	// if higher than max freq is requested (this shouldn't happen)
            index = 0;
            goto s5pc11x_target_frq_end;
         }
@@ -372,7 +383,7 @@ unsigned int s5pc11x_target_frq(unsigned int pred_freq,
         }
 
 
-        if((flag != 1)&&(flag != -1)) {
+        if((flag != 1)&&(flag != -1)&&(flag != 2)) {
                 printk("s5pc1xx_target_frq: flag error!!!!!!!!!!!!!");
         }
 
@@ -381,12 +392,9 @@ unsigned int s5pc11x_target_frq(unsigned int pred_freq,
         if(freq_tab[index].frequency == pred_freq) {
                 if(flag == 1)
                         index = transition_state[S5PC11X_FREQ_TAB][index][1];
-                else
+                else if(flag == -1)
                         index = transition_state[S5PC11X_FREQ_TAB][index][0];
         }
-        /*else {
-index = 0;
-}*/
 
         if (g_dvfs_high_lock_token) {
                  if(g_dvfs_fix_lock_limit == true) {
@@ -400,11 +408,9 @@ index = 0;
          //printk("s5pc11x_target_frq index = %d\n",index);
 
 s5pc11x_target_frq_end:
-         //spin_lock_irqsave(&g_cpufreq_lock, irqflags);
          index = s5pc11x_target_freq_find_index(index,flag);
          index = CLIP_LEVEL(index, s5pc11x_cpufreq_level);
          s5pc11x_cpufreq_index = index;
-         //spin_unlock_irqrestore(&g_cpufreq_lock, irqflags);
 
          freq = freq_tab[index].frequency;
          spin_unlock(&g_dvfslock);

@@ -24,6 +24,10 @@
 #include <linux/sched.h>
 #include <linux/earlysuspend.h>
 
+#ifdef CONFIG_CPU_S5PV210
+extern unsigned int s5pc11x_target_frq(unsigned int pred_freq, int flag);
+#endif
+
 /*
  * dbs is used in this file as a shortform for demandbased switching
  * It helps to keep variable names smaller, simpler
@@ -115,6 +119,9 @@ static void ondemand_suspend(int suspend)
         } else {
                 suspended = 1;
 		// let's give it a little breathing room
+#ifdef CONFIG_CPU_S5PV210
+     		suspendfreq = s5pc11x_target_frq(suspendfreq, 2);
+#endif
                 __cpufreq_driver_target(dbs_info->cur_policy, suspendfreq, CPUFREQ_RELATION_H);
                 pr_info("[imoseyon] ondemand suspended at %d\n", dbs_info->cur_policy->cur);
         }
@@ -436,15 +443,22 @@ static void dbs_freq_increase(struct cpufreq_policy *p, unsigned int freq)
 		return;
 	if (suspended && freq > suspendfreq) {
 	     freq = suspendfreq;
+#ifdef CONFIG_CPU_S5PV210
+             freq = s5pc11x_target_frq(freq, 2);
+#endif
 	     __cpufreq_driver_target(p, freq, CPUFREQ_RELATION_H);
-	} else
+	} else {
+#ifdef CONFIG_CPU_S5PV210
+             freq = s5pc11x_target_frq(freq, 2);
+#endif
 	    __cpufreq_driver_target(p, freq, dbs_tuners_ins.powersave_bias ?
                         CPUFREQ_RELATION_L : CPUFREQ_RELATION_H);
+	}
 }
 
 static void dbs_check_cpu(struct cpu_dbs_info_s *this_dbs_info)
 {
-	unsigned int max_load_freq;
+	unsigned int max_load_freq, target_freq;
 
 	struct cpufreq_policy *policy;
 	unsigned int j;
@@ -566,6 +580,11 @@ static void dbs_check_cpu(struct cpu_dbs_info_s *this_dbs_info)
 		if (freq_next < policy->min)
 			freq_next = policy->min;
 
+#ifdef CONFIG_CPU_S5PV210
+                target_freq = s5pc11x_target_frq(policy->cur, -1);
+		__cpufreq_driver_target(policy, target_freq, CPUFREQ_RELATION_L);
+#else
+
 		if (!dbs_tuners_ins.powersave_bias) {
 			__cpufreq_driver_target(policy, freq_next,
 					CPUFREQ_RELATION_L);
@@ -575,6 +594,7 @@ static void dbs_check_cpu(struct cpu_dbs_info_s *this_dbs_info)
 			__cpufreq_driver_target(policy, freq,
 				CPUFREQ_RELATION_L);
 		}
+#endif
 	}
 }
 
@@ -584,6 +604,7 @@ static void do_dbs_timer(struct work_struct *work)
 		container_of(work, struct cpu_dbs_info_s, work.work);
 	unsigned int cpu = dbs_info->cpu;
 	int sample_type = dbs_info->sample_type;
+	unsigned int t_freq;
 
 	int delay;
 
@@ -609,9 +630,13 @@ static void do_dbs_timer(struct work_struct *work)
 				delay -= jiffies % delay;
 		}
 	} else {
-	    if (!suspended) 
-		__cpufreq_driver_target(dbs_info->cur_policy,
-			dbs_info->freq_lo, CPUFREQ_RELATION_H);
+	    if (!suspended) {
+	        t_freq = dbs_info->freq_lo;	
+#ifdef CONFIG_CPU_S5PV210
+                t_freq = s5pc11x_target_frq(t_freq, 2);
+#endif
+		__cpufreq_driver_target(dbs_info->cur_policy, t_freq, CPUFREQ_RELATION_H);
+	    }
 	    delay = dbs_info->freq_lo_jiffies;
 	}
 	schedule_delayed_work_on(cpu, &dbs_info->work, delay);

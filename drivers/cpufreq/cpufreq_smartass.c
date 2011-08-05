@@ -34,6 +34,10 @@
 #include <asm/cputime.h>
 #include <linux/earlysuspend.h>
 
+#ifdef CONFIG_CPU_S5PV210
+extern unsigned int s5pc11x_target_frq(unsigned int pred_freq, int flag);
+#endif
+
 static void (*pm_idle_old)(void);
 static atomic_t active_count = ATOMIC_INIT(0);
 
@@ -333,7 +337,11 @@ static void cpufreq_smartass_freq_change_time_work(struct work_struct *work)
 			} else if (ramp_up_step) {
 */
 			if (ramp_up_step) {
+#ifdef CONFIG_CPU_S5PV210
+                	  	new_freq = s5pc11x_target_frq(policy->cur, 1);
+#else
                                 new_freq = policy->cur + ramp_up_step;
+#endif
                                 relation = CPUFREQ_RELATION_H;
                         } else {
                                 new_freq = this_smartass->max_speed;
@@ -345,21 +353,26 @@ static void cpufreq_smartass_freq_change_time_work(struct work_struct *work)
 				relation = CPUFREQ_RELATION_H;
 			}
 		  } else {
+#ifdef CONFIG_CPU_S5PV210
+                	new_freq = s5pc11x_target_frq(policy->cur, 1);
+#else
 			new_freq = policy->cur + 150000;
+#endif
 			if (new_freq > suspendfreq) new_freq = suspendfreq; 	
 			relation = CPUFREQ_RELATION_H;
 		  }
 		
                 } else if (cpu_load < min_cpu_load) {
-//			if (cpu_load < rapid_min_cpu_load) {
-//				new_freq = awake_min_freq;
-//			} else if (ramp_down_step) {
+#ifdef CONFIG_CPU_S5PV210
+                	new_freq = s5pc11x_target_frq(policy->cur, -1);
+#else
 			if (ramp_down_step) {
-                                  new_freq = policy->cur - ramp_down_step;
+                                new_freq = policy->cur - ramp_down_step;
                         } else {
                                 cpu_load += 100 - max_cpu_load; // dummy load.
                                 new_freq = policy->cur * cpu_load / 100;
                         }
+#endif
                         relation = CPUFREQ_RELATION_L;
                 }
                 else new_freq = policy->cur;
@@ -378,14 +391,22 @@ static void cpufreq_smartass_freq_change_time_work(struct work_struct *work)
 
 			if (relation == CPUFREQ_RELATION_L && old_freq == policy->cur) {
 			  // step down one more time
+#ifdef CONFIG_CPU_S5PV210
+                	  new_freq = s5pc11x_target_frq(new_freq, -1);
+#else
 			  new_freq = new_freq - 100000;
+#endif
 			  __cpufreq_driver_target(policy, new_freq, relation);
 			  this_smartass->freq_change_time_in_idle =
 					get_cpu_idle_time_us(cpu,&this_smartass->freq_change_time);
 			} 
 			if (relation == CPUFREQ_RELATION_H && old_freq == policy->cur) {
 			  // step up one more time
+#ifdef CONFIG_CPU_S5PV210
+                	  new_freq = s5pc11x_target_frq(new_freq, 1);
+#else
 			  new_freq = new_freq + 100000;
+#endif
 			  __cpufreq_driver_target(policy, new_freq, relation);
 			  this_smartass->freq_change_time_in_idle =
 					get_cpu_idle_time_us(cpu,&this_smartass->freq_change_time);
@@ -646,6 +667,9 @@ static void smartass_suspend(int cpu, int suspend)
         if (!suspend) { // resume at max speed:
 		suspended=0;
                 new_freq = validate_freq(this_smartass,sleep_wakeup_freq);
+#ifdef CONFIG_CPU_S5PV210
+                new_freq = s5pc11x_target_frq(sleep_wakeup_freq, 2);
+#endif
 
                 if (debug_mask & SMARTASS_DEBUG_JUMPS)
                         printk(KERN_INFO "SmartassS: awaking at %d\n",new_freq);
@@ -667,6 +691,10 @@ static void smartass_suspend(int cpu, int suspend)
 
                 if (debug_mask & SMARTASS_DEBUG_JUMPS)
                         printk(KERN_INFO "SmartassS: suspending at %d\n",policy->cur);
+
+#ifdef CONFIG_CPU_S5PV210
+                suspendfreq = s5pc11x_target_frq(suspendfreq, 2);
+#endif
 		__cpufreq_driver_target(policy, suspendfreq, CPUFREQ_RELATION_H);
         	pr_info("[imoseyon] smartass suspending with %d\n", policy->cur);
 		suspended=1;

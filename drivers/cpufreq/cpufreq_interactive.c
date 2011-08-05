@@ -28,6 +28,10 @@
 
 #include <asm/cputime.h>
 
+#ifdef CONFIG_CPU_S5PV210
+extern unsigned int s5pc11x_target_frq(unsigned int pred_freq, int flag);
+#endif
+
 static void (*pm_idle_old)(void);
 static atomic_t active_count = ATOMIC_INIT(0);
 
@@ -78,6 +82,32 @@ struct cpufreq_governor cpufreq_gov_interactive = {
 	.max_transition_latency = 10000000,
 	.owner = THIS_MODULE,
 };
+
+
+/*
+ * Choose the cpu frequency based off the load. For now choose the minimum
+ * frequency that will satisfy the load, which is not always the lower power.
+ */
+static unsigned int cpufreq_interactive_calc_freq(unsigned int cpu)
+{
+	unsigned int delta_time;
+	unsigned int idle_time;
+	unsigned int cpu_load;
+	unsigned int newfreq;
+	u64 current_wall_time;
+	u64 current_idle_time;;
+
+	current_idle_time = get_cpu_idle_time_us(cpu, &current_wall_time);
+
+	idle_time = (unsigned int) current_idle_time - freq_change_time_in_idle;
+	delta_time = (unsigned int) current_wall_time - freq_change_time;
+
+	cpu_load = 100 * (delta_time - idle_time) / delta_time;
+
+	newfreq = policy->cur * cpu_load / 100;	
+
+	return newfreq;
+}
 
 static void cpufreq_interactive_timer(unsigned long data)
 {
@@ -148,6 +178,7 @@ static void cpufreq_interactive_timer(unsigned long data)
 		return;
 
 	target_freq = policy->min;
+//	target_freq = cpufreq_interactive_calc_freq(smp_processor_id());
 	cpumask_set_cpu(data, &work_cpumask);
 	queue_work(down_wq, &freq_scale_work);
 }
@@ -175,32 +206,6 @@ static void cpufreq_idle(void)
 	}
 }
 
-/*
- * Choose the cpu frequency based off the load. For now choose the minimum
- * frequency that will satisfy the load, which is not always the lower power.
- */
-static unsigned int cpufreq_interactive_calc_freq(unsigned int cpu)
-{
-	unsigned int delta_time;
-	unsigned int idle_time;
-	unsigned int cpu_load;
-	unsigned int newfreq;
-	u64 current_wall_time;
-	u64 current_idle_time;;
-
-	current_idle_time = get_cpu_idle_time_us(cpu, &current_wall_time);
-
-	idle_time = (unsigned int) current_idle_time - freq_change_time_in_idle;
-	delta_time = (unsigned int) current_wall_time - freq_change_time;
-
-	cpu_load = 100 * (delta_time - idle_time) / delta_time;
-
-	newfreq = policy->cur * cpu_load / 100;	
-
-	return newfreq;
-}
-
-
 /* We use the same work function to sale up and down */
 static void cpufreq_interactive_freq_change_time_work(struct work_struct *work)
 {
@@ -217,16 +222,28 @@ static void cpufreq_interactive_freq_change_time_work(struct work_struct *work)
 				cpumask_clear_cpu(cpu, &work_cpumask);
 				return;
 			}
+#ifdef CONFIG_CPU_S5PV210
+			target_freq = s5pc11x_target_frq(target_freq, 2);
+#endif
 			__cpufreq_driver_target(policy, target_freq, CPUFREQ_RELATION_H);
 		} else {
 			if (!suspended) {
-		  	  target_freq = cpufreq_interactive_calc_freq(cpu);
+#ifdef CONFIG_CPU_S5PV210
+			  target_freq = s5pc11x_target_frq(policy->cur, -1);
+#endif
+//		  	  target_freq = cpufreq_interactive_calc_freq(cpu);
 			  __cpufreq_driver_target(policy, target_freq, CPUFREQ_RELATION_L);
 			} else {  // special care when suspended
 			  if (target_freq > suspendfreq) {
+#ifdef CONFIG_CPU_S5PV210
+  			    suspendfreq = s5pc11x_target_frq(suspendfreq, 2);
+#endif
 			     __cpufreq_driver_target(policy, suspendfreq, CPUFREQ_RELATION_H);
 			  } else {
-		  	    target_freq = cpufreq_interactive_calc_freq(cpu);
+//		  	    target_freq = cpufreq_interactive_calc_freq(cpu);
+#ifdef CONFIG_CPU_S5PV210
+			    target_freq = s5pc11x_target_frq(policy->cur, -1);
+#endif
 			    if (target_freq < policy->cur) 
 			      __cpufreq_driver_target(policy, target_freq, CPUFREQ_RELATION_H);
 			  }
@@ -273,10 +290,16 @@ static void interactive_suspend(int suspend)
 	if (!enabled) return;
         if (!suspend) { // resume at max speed:
 		suspended = 0;
+#ifdef CONFIG_CPU_S5PV210
+		max_speed = s5pc11x_target_frq(max_speed, 2);
+#endif
                 __cpufreq_driver_target(policy, max_speed, CPUFREQ_RELATION_L);
                 pr_info("[imoseyon] interactive awake at %d\n", policy->cur);
         } else {
 		suspended = 1;
+#ifdef CONFIG_CPU_S5PV210
+		suspendfreq = s5pc11x_target_frq(suspendfreq, 2);
+#endif
                 __cpufreq_driver_target(policy, suspendfreq, CPUFREQ_RELATION_H);
                 pr_info("[imoseyon] interactive suspended at %d\n", policy->cur);
         }

@@ -39,7 +39,6 @@ extern unsigned int s5pc11x_target_frq(unsigned int pred_freq, int flag);
 #define DEF_SAMPLING_FREQ_STEP 5
 #endif
 
-
 /*
  * The polling frequency of this governor depends on the capability of
  * the processor. Default polling frequency is 1000 times the transition
