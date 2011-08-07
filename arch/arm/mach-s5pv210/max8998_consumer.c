@@ -381,10 +381,10 @@ static int set_max8998(unsigned int pwr, enum perf_level p_lv)
         if(pwr == PMIC_ARM) {
              // voltage = frequency_match_tab[p_lv][pwr + 1];
 
-		if (p_lv < L7)  // don't allow voltage to be changed for 100/200 for now
+//		if (p_lv < L7)  // don't allow voltage to be changed for 100/200 for now
                   voltage = frequency_match_tab[p_lv][pwr + 1] - (exp_UV_mV[p_lv]);
-		else
-		  voltage = frequency_match_tab[p_lv][pwr + 1];
+//		else
+//		  voltage = frequency_match_tab[p_lv][pwr + 1];
 
                 if(frequency_voltage_tab[p_lv][2] != voltage)
                         frequency_voltage_tab[p_lv][2] = voltage;
