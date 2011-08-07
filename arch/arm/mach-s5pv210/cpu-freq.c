@@ -739,51 +739,6 @@ static void inform_dvfs_clock_status(struct work_struct *work) {
 }
 #endif
 
-#ifdef CONFIG_HAS_WAKELOCK
-#if 0
-void s5pc11x_cpufreq_powersave(struct early_suspend *h)
-{
-	//unsigned long irqflags;
-	//spin_lock_irqsave(&g_cpufreq_lock, irqflags);
-	s5pc11x_cpufreq_level = S5PC11X_MAXFREQLEVEL + 2;
-	//spin_unlock_irqrestore(&g_cpufreq_lock, irqflags);
-	return;
-}
-
-void s5pc11x_cpufreq_performance(struct early_suspend *h)
-{
-	//unsigned long irqflags;
-	if(!is_userspace_gov()) {
-		//spin_lock_irqsave(&g_cpufreq_lock, irqflags);
-		s5pc11x_cpufreq_level = S5PC11X_MAXFREQLEVEL;
-		s5pc11x_cpufreq_index = CLIP_LEVEL(s5pc11x_cpufreq_index, S5PC11X_MAXFREQLEVEL);
-		//spin_unlock_irqrestore(&g_cpufreq_lock, irqflags);
-		s5pc110_target(NULL, s5pc110_freq_table[S5PC11X_FREQ_TAB][s5pc11x_cpufreq_index].frequency, 1);
-	}
-	else {
-		//spin_lock_irqsave(&g_cpufreq_lock, irqflags);
-		s5pc11x_cpufreq_level = S5PC11X_MAXFREQLEVEL;
-		//spin_unlock_irqrestore(&g_cpufreq_lock, irqflags);
-#ifdef USE_DVS
-#ifdef GPIO_BASED_DVS
-		set_voltage_dvs(s5pc11x_cpufreq_index);
-#else
-		set_voltage(s5pc11x_cpufreq_index);
-#endif
-#endif
-	}
-	return;
-}
-
-static struct early_suspend s5pc11x_freq_suspend = {
-	.suspend = s5pc11x_cpufreq_powersave,
-	.resume = s5pc11x_cpufreq_performance,
-	.level = EARLY_SUSPEND_LEVEL_DISABLE_FB + 1,
-};
-#endif
-#endif //CONFIG_HAS_WAKELOCK
-
-
 unsigned int get_min_cpufreq(void)
 {	unsigned int frequency;
 	frequency = s5pc110_freq_table[S5PC11X_FREQ_TAB][S5PC11X_MAXFREQLEVEL].frequency;
