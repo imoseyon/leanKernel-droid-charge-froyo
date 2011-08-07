@@ -777,8 +777,8 @@ unsigned int ret = -EINVAL;
 ret = sscanf(buf, "%u %u %u %u %u %u %u %u %u", &exp_UV_mV[0],&exp_UV_mV[1],&exp_UV_mV[2],&exp_UV_mV[3],&exp_UV_mV[4],&exp_UV_mV[5],&exp_UV_mV[6],&exp_UV_mV[7],&exp_UV_mV[8]);
 
 // imoseyon - don't allow 7 & 8 to change
-exp_UV_mV[7] = 0;
-exp_UV_mV[8] = 0;
+//exp_UV_mV[7] = 0;
+//exp_UV_mV[8] = 0;
 
 if (ret != 1)
 return -EINVAL;
