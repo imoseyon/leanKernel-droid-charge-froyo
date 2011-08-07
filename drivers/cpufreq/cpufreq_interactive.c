@@ -345,7 +345,7 @@ static int cpufreq_governor_interactive(struct cpufreq_policy *new_policy,
 		policy = new_policy;
 		enabled = 1;
 
-        	register_early_suspend(&interactive_power_suspend);
+//        	register_early_suspend(&interactive_power_suspend);
         	pr_info("[imoseyon] interactive start - freq_threshold at %d, resume at %d\n", freq_threshold, resume_speed);
 		break;
 
@@ -359,7 +359,7 @@ static int cpufreq_governor_interactive(struct cpufreq_policy *new_policy,
 		pm_idle = pm_idle_old;
 		del_timer(&per_cpu(cpu_timer, new_policy->cpu));
 		enabled = 0;
-        	unregister_early_suspend(&interactive_power_suspend);
+//        	unregister_early_suspend(&interactive_power_suspend);
         	pr_info("[imoseyon] interactive inactive\n");
 			break;
 

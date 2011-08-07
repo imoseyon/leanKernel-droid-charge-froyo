@@ -747,8 +747,8 @@ static int cpufreq_governor_smartass(struct cpufreq_policy *new_policy,
                 this_smartass->enable = 1;
 
 		// imoseyon - should only register for suspend when governor active
-        	register_early_suspend(&smartass_power_suspend); 
-        	pr_info("[imoseyon] smartass active\n");
+  //      	register_early_suspend(&smartass_power_suspend); 
+   //     	pr_info("[imoseyon] smartass active\n");
 
                 // notice no break here!
 
@@ -772,8 +772,8 @@ static int cpufreq_governor_smartass(struct cpufreq_policy *new_policy,
 
                 pm_idle = pm_idle_old;
 		// unregister when governor exits
-        	unregister_early_suspend(&smartass_power_suspend);
-        	pr_info("[imoseyon] smartass inactive\n");
+//        	unregister_early_suspend(&smartass_power_suspend);
+ //       	pr_info("[imoseyon] smartass inactive\n");
                 break;
         }
 
