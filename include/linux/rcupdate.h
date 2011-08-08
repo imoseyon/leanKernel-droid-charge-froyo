@@ -57,21 +57,45 @@ extern void synchronize_rcu(void);
 #else /* #ifdef CONFIG_TREE_PREEMPT_RCU */
 #define synchronize_rcu synchronize_sched
 #endif /* #else #ifdef CONFIG_TREE_PREEMPT_RCU */
-extern void synchronize_rcu_bh(void);
+//extern void synchronize_rcu_bh(void);
+extern void call_rcu_sched(struct rcu_head *head,
+                           void (*func)(struct rcu_head *rcu));
 extern void synchronize_sched(void);
-extern void rcu_barrier(void);
-extern void rcu_barrier_bh(void);
+extern void rcu_sched_qs(int cpu);
+//extern void rcu_barrier(void);
+//extern void rcu_barrier_bh(void);
 extern void rcu_barrier_sched(void);
-extern void synchronize_sched_expedited(void);
+//extern void synchronize_sched_expedited(void);
 extern int sched_expedited_torture_stats(char *page);
 
+static inline void __rcu_read_lock_bh(void)
+{
+        local_bh_disable();
+}
+static inline void __rcu_read_unlock_bh(void)
+{
+        local_bh_enable();
+}
+
+static inline void __rcu_read_lock(void)
+{
+        preempt_disable();
+}
+
+static inline void __rcu_read_unlock(void)
+{
+        preempt_enable();
+}
+
+
 /* Internal to kernel */
-extern void rcu_init(void);
-extern void rcu_scheduler_starting(void);
+//extern void rcu_init(void);
+//extern void rcu_scheduler_starting(void);
+extern void rcu_sched_qs(int cpu);
+extern void rcu_bh_qs(int cpu);
+extern void rcu_check_callbacks(int cpu, int user);
 #ifndef CONFIG_TINY_RCU
 extern int rcu_needs_cpu(int cpu);
-#else
-static inline int rcu_needs_cpu(int cpu) { return 0; }
 #endif
 extern int rcu_scheduler_active;
 
@@ -276,6 +300,9 @@ struct rcu_synchronize {
 
 extern void wakeme_after_rcu(struct rcu_head  *head);
 
+#ifdef CONFIG_TINY_RCU
+#define call_rcu        call_rcu_sched
+#else
 /**
  * call_rcu - Queue an RCU callback for invocation after a grace period.
  * @head: structure to be used for queueing the RCU updates.
@@ -289,6 +316,8 @@ extern void wakeme_after_rcu(struct rcu_head  *head);
  */
 extern void call_rcu(struct rcu_head *head,
 			      void (*func)(struct rcu_head *head));
+#endif
+
 
 /**
  * call_rcu_bh - Queue an RCU for invocation after a quicker grace period.
@@ -311,4 +340,109 @@ extern void call_rcu(struct rcu_head *head,
 extern void call_rcu_bh(struct rcu_head *head,
 			void (*func)(struct rcu_head *head));
 
+#ifdef CONFIG_TINY_RCU
+
+/*
+ * debug_rcu_head_queue()/debug_rcu_head_unqueue() are used internally
+ * by call_rcu() and rcu callback execution, and are therefore not part of the
+ * RCU API. Leaving in rcupdate.h because they are used by all RCU flavors.
+ */
+
+#ifdef CONFIG_DEBUG_OBJECTS_RCU_HEAD
+# define STATE_RCU_HEAD_READY   0
+# define STATE_RCU_HEAD_QUEUED  1
+
+extern struct debug_obj_descr rcuhead_debug_descr;
+
+static inline void debug_rcu_head_queue(struct rcu_head *head)
+{
+        WARN_ON_ONCE((unsigned long)head & 0x3);
+        debug_object_activate(head, &rcuhead_debug_descr);
+        debug_object_active_state(head, &rcuhead_debug_descr,
+                                  STATE_RCU_HEAD_READY,
+                                  STATE_RCU_HEAD_QUEUED);
+}
+
+static inline void debug_rcu_head_unqueue(struct rcu_head *head)
+{
+        debug_object_active_state(head, &rcuhead_debug_descr,
+                                  STATE_RCU_HEAD_QUEUED,
+                                  STATE_RCU_HEAD_READY);
+        debug_object_deactivate(head, &rcuhead_debug_descr);
+}
+#else   /* !CONFIG_DEBUG_OBJECTS_RCU_HEAD */
+static inline void debug_rcu_head_queue(struct rcu_head *head)
+{
+}
+
+static inline void debug_rcu_head_unqueue(struct rcu_head *head)
+{
+}
+#endif  /* #else !CONFIG_DEBUG_OBJECTS_RCU_HEAD */
+
+static __always_inline bool __is_kfree_rcu_offset(unsigned long offset)
+{
+        return offset < 4096;
+}
+
+static __always_inline
+void __kfree_rcu(struct rcu_head *head, unsigned long offset)
+{
+        typedef void (*rcu_callback)(struct rcu_head *);
+
+//        BUILD_BUG_ON(!__builtin_constant_p(offset));
+
+        /* See the kfree_rcu() header comment. */
+ //       BUILD_BUG_ON(!__is_kfree_rcu_offset(offset));
+
+        call_rcu(head, (rcu_callback)offset);
+}
+
+extern void kfree(const void *);
+
+static inline void __rcu_reclaim(struct rcu_head *head)
+{
+        unsigned long offset = (unsigned long)head->func;
+
+        if (__is_kfree_rcu_offset(offset))
+                kfree((void *)head - offset);
+        else
+                head->func(head);
+}
+
+/**
+ * kfree_rcu() - kfree an object after a grace period.
+ * @ptr:        pointer to kfree
+ * @rcu_head:   the name of the struct rcu_head within the type of @ptr.
+ *
+ * Many rcu callbacks functions just call kfree() on the base structure.
+ * These functions are trivial, but their size adds up, and furthermore
+ * when they are used in a kernel module, that module must invoke the
+ * high-latency rcu_barrier() function at module-unload time.
+ *
+ * The kfree_rcu() function handles this issue.  Rather than encoding a
+ * function address in the embedded rcu_head structure, kfree_rcu() instead
+ * encodes the offset of the rcu_head structure within the base structure.
+ * Because the functions are not allowed in the low-order 4096 bytes of
+ * kernel virtual memory, offsets up to 4095 bytes can be accommodated.
+ * If the offset is larger than 4095 bytes, a compile-time error will
+ * be generated in __kfree_rcu().  If this error is triggered, you can
+ * either fall back to use of call_rcu() or rearrange the structure to
+ * position the rcu_head structure into the first 4096 bytes.
+ *
+ * Note that the allowable offset might decrease in the future, for example,
+ * to allow something like kmem_cache_free_rcu().
+ */
+#define kfree_rcu(ptr, rcu_head)                                        \
+        __kfree_rcu(&((ptr)->rcu_head), offsetof(typeof(*(ptr)), rcu_head))
+
+static inline void init_rcu_head_on_stack(struct rcu_head *head)
+{
+}
+
+static inline void destroy_rcu_head_on_stack(struct rcu_head *head)
+{
+}
+
+#endif
 #endif /* __LINUX_RCUPDATE_H */
