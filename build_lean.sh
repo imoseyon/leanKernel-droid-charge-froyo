@@ -38,9 +38,9 @@ cp .config arch/arm/configs/leancharge_defconfig
 cd ../zip
 rm *.zip
 if [ $OPT -eq 2 ]; then
-  zip -r imoseyon_leanKernel_novoodoo_$1.zip *
+  zip -r imoseyon_leanKernel_charge_novoodoo_$1.zip *
 else 
-  zip -r imoseyon_leanKernel_voodoo_$1.zip *
+  zip -r imoseyon_leanKernel_charge_voodoo_$1.zip *
 fi
 rm /tmp/*.zip
 cp *.zip /tmp
